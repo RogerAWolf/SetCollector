@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    
+    <link rel="stylesheet" href="./styles/style.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script>
+        let backendURL = "http://localhost:8081";
+        let allCardsString = "";
+
+        function loadCollection(gameIdSet){
+            allCardsString = "";
+            gameIdSet.forEach(gameId => {
+                fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${gameId}`)                
+                .then((request)=>request.text())
+                .then((data)=> gameObject = processGameInfoIntoObject(data))
+                .then((gameObject)=> gameCardHTML = generateGameCard(gameObject))
+                .then((gameCardHTML)=> allCardsString += gameCardHTML)
+                .then(()=> document.getElementById("cardGrid").innerHTML = allCardsString)
+            });            
+        }
+
+        function processGameInfoIntoObject(data){
+            let parser = new DOMParser();
+            let gameInfo = {};           
+            let xmlDoc = parser.parseFromString(data, "text/xml"); 
+            
+            gameInfo.coverURL = xmlDoc.querySelector('image').innerHTML;
+            gameInfo.title = xmlDoc.querySelector('name[type="primary"]').attributes.value.value;
+            gameInfo.minPlayers = xmlDoc.querySelector('minplayers').attributes.value.value;
+            gameInfo.maxPlayers = xmlDoc.querySelector('maxplayers').attributes.value.value;
+            gameInfo.minPlaytime = xmlDoc.querySelector('minplaytime').attributes.value.value;
+            gameInfo.maxPlaytime = xmlDoc.querySelector('maxplaytime').attributes.value.value;
+            gameInfo.bggID = xmlDoc.querySelector('item').attributes.id.value;
+            gameInfo.gameScoreList = [];
+
+            return gameInfo;
+        }
+
+        function generateGameCard(gameInfo){
+            let HTMLString = `
+                <div class='card'>
+                <img src='${gameInfo.coverURL}'>
+                <div class='cardContainer'>
+                <h4>${gameInfo.title}</h4>
+                <p>${gameInfo.minPlayers == gameInfo.maxPlayers?gameInfo.minPlayers:gameInfo.minPlayers + " - " +gameInfo.maxPlayers} players <br/>
+                ${gameInfo.minPlaytime == gameInfo.maxPlaytime?gameInfo.minPlaytime :gameInfo.minPlaytime + " - " + gameInfo.maxPlaytime} minutes </p>
+                <h6 onclick='addGameToCollection("${gameInfo.bggID}")'>Add game to collection</h6></div></div>
+            `;
+                                   
+            return HTMLString;
+        }
+
+        function searchGame(){
+            let parser = new DOMParser();
+            let xmlDoc;
+            let searchTerm = document.getElementById("searchField").value;
+            searchTerm = searchTerm.replace(' ', '-');
+            let searchResults = [];
+            fetch(`https://boardgamegeek.com/xmlapi/search?search=${searchTerm}`)
+                .then((request)=>request.text())
+                .then((data)=>{
+                    xmlDoc = parser.parseFromString(data, "text/xml")
+                })
+                .then(()=> {
+                    let resultArray = xmlDoc.querySelectorAll('boardgame');
+                    resultArray.forEach((game)=> {
+                        searchResults.push(game.attributes.objectid.value);
+                    })
+                }) 
+                .then(()=> {
+                    if(searchResults.length > 20){
+                        document.getElementById("cardGrid").innerHTML = "Too many results, refine search";
+                    } else {
+                        loadCollection(searchResults)
+                    }
+                }) 
+        };
+
+        function addGameToCollection(gameId){
+            fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${gameId}`)
+                .then((request)=>request.text())
+                .then((data)=> gameObject = processGameInfoIntoObject(data))
+                .then((gameObject)=> {
+                    let xhr = new XMLHttpRequest();
+                    let JSONstatement = JSON.stringify(gameObject);
+                    xhr.open("POST",`${backendURL}/gameCollection/saveGameToCollection/1`, true);
+                    xhr.setRequestHeader("Content-Type", "application/json");
+                    xhr.send(JSONstatement);
+                    
+                    }                        
+        )}
+
+        function showPersonalCollection(collectionid){            
+            let parser = new DOMParser();
+            let idArray = [];
+
+            fetch(`${backendURL}/gameCollection/getCollection/1`)
+                .then((request)=> request.text())
+                .then((data)=> collection = JSON.parse(data))
+                .then((collection)=> {
+                    collection.gameList.forEach((game)=>{
+                        idArray.push(game.bggID);
+                    })
+                    loadCollection(idArray);
+                })
+        }
+
+        function verstuurMail(){
+            let emailObject = {};
+            emailObject.recipient = document.getElementById("emailGeadresseerde").value;
+            emailObject.subject = document.getElementById("emailOnderwerp").value;
+            emailObject.msgBody = document.getElementById("emailBericht").value;
+            // emailObject.sender = document.getElementById("emailVerzender").value;
+            fetch(`${backendURL}/email/emailVersturen`,{
+                method: "POST",               
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(emailObject)
+            })
+        }
+
+    </script>
+</head>
+<body>
+    <p><button onclick="showPersonalCollection(1)">Load collection</button></p>
+    
+    <div id="search">
+        <input type="text" id="searchField">
+        <p><button onclick="searchGame()">Search</button></p>
+    </div>
+    <div class="grid-container" id="cardGrid">
+
+    </div>
+    <hr>
+    <div id="mailArea">
+        <!-- <h5>Verzender: </h5><br>
+        <input type="text" id="emailVerzender"><br> -->
+        <h5>Geadresseerde: </h5><br>
+        <input type="text" id="emailGeadresseerde"><br>
+        <h5>Onderwerp:</h5>
+        <input type="text" id="emailOnderwerp"><br>
+        <h5>Bericht:</h5>
+        <input type="textbox" width="300" id="emailBericht"><br><br>
+        <button class="btn btn-primary" onclick="verstuurMail()">Verstuur mail</button>
+    </div>
+
+</body>
+</html>
