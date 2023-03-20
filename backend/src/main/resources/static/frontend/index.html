@@ -10,12 +10,13 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <script>
         let backendURL = "http://localhost:8081";
+        let frontendApi = "https://api.geekdo.com/xmlapi2";
         let allCardsString = "";
 
         function loadCollection(gameIdSet){
             allCardsString = "";
             gameIdSet.forEach(gameId => {
-                fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${gameId}`)                
+                fetch(`${frontendApi}/thing?id=${gameId}`)
                 .then((request)=>request.text())
                 .then((data)=> gameObject = processGameInfoIntoObject(data))
                 .then((gameObject)=> gameCardHTML = generateGameCard(gameObject))
@@ -61,7 +62,7 @@
             let searchTerm = document.getElementById("searchField").value;
             searchTerm = searchTerm.replace(' ', '-');
             let searchResults = [];
-            fetch(`https://boardgamegeek.com/xmlapi/search?search=${searchTerm}`)
+            fetch(`${frontendApi}/search?search=${searchTerm}`)
                 .then((request)=>request.text())
                 .then((data)=>{
                     xmlDoc = parser.parseFromString(data, "text/xml")
@@ -82,7 +83,7 @@
         };
 
         function addGameToCollection(gameId){
-            fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${gameId}`)
+            fetch(`${frontendApi}/thing?id=${gameId}`)
                 .then((request)=>request.text())
                 .then((data)=> gameObject = processGameInfoIntoObject(data))
                 .then((gameObject)=> {
