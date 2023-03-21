@@ -10,12 +10,13 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <script>
         let backendURL = "http://localhost:8081";
+        let frontendApi = "https://api.geekdo.com/xmlapi2"
         let allCardsString = "";
 
         function loadCollection(gameIdSet){
             allCardsString = "";
             gameIdSet.forEach(gameId => {
-                fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${gameId}`)                
+                fetch(`${frontendApi}/thing?id=${gameId}`)                
                 .then((request)=>request.text())
                 .then((data)=> gameObject = processGameInfoIntoObject(data))
                 .then((gameObject)=> gameCardHTML = generateGameCard(gameObject))
@@ -61,7 +62,7 @@
             let searchTerm = document.getElementById("searchField").value;
             searchTerm = searchTerm.replace(' ', '-');
             let searchResults = [];
-            fetch(`https://boardgamegeek.com/xmlapi/search?search=${searchTerm}`)
+            fetch(`https://api.geekdo.com/xmlapi/search?search=${searchTerm}`)
                 .then((request)=>request.text())
                 .then((data)=>{
                     xmlDoc = parser.parseFromString(data, "text/xml")
@@ -82,7 +83,11 @@
         };
 
         function addGameToCollection(gameId){
-            fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${gameId}`)
+            fetch(`${frontendApi}/thing?id=${gameId}`, {
+                headers: { 
+                    "Authorization": "Bearer " + (localStorage.getItem("SetCollectorToken"))
+                    }
+                })
                 .then((request)=>request.text())
                 .then((data)=> gameObject = processGameInfoIntoObject(data))
                 .then((gameObject)=> {
@@ -123,6 +128,86 @@
             })
         }
 
+        function createNewUser(){
+            let newUser = {};
+
+            newUser.username = document.getElementById("newUsername").value;
+            newUser.input = document.getElementById("newPassword").value;
+
+            let newPassword = document.getElementById("newPassword").value;
+            let newPasswordRepeat = document.getElementById("newPasswordRepeat").value;
+                
+            if(newPassword.localeCompare(newPasswordRepeat) === 0){         
+                fetch(`${backendURL}/user/createNewUser`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(newUser)
+                })
+                .then(()=> {
+                    document.getElementById("newUsername").value = "";
+                    document.getElementById("newPassword").value = "";
+                    document.getElementById("newPasswordRepeat").value = "";
+                    alert("user added");
+                })
+            } else {
+                alert("Passwords do not match, please try again.")
+            }
+        }
+
+        function checkCredentials(){
+            let credentials = {};
+            credentials.username = document.getElementById("usernameInput").value;
+            credentials.input = document.getElementById("passwordInput").value;
+            fetch(`${backendURL}/user/checkUserCredentials`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(credentials)
+            })
+            .then((result) => (result.text()))
+            .then((data) => {
+                document.getElementById("usernameInput").value = "";
+                document.getElementById("passwordInput").value = "";
+                if(data == "true"){
+                    alert("Wachtwoord is goed");
+                    // createJWT(credentials);
+                } else {
+                    alert("Wachtwoord is fout")
+                }
+            })
+            
+        }
+
+        function createJWT(credentials){
+
+            fetch(`${backendURL}/api/auth`, {
+                method: "POST", 
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(credentials)
+            })
+            .then((response) => response.text())
+            .then((data) => tokenObject = JSON.parse(data))
+            .then((tokenObject)=>{
+                localStorage.setItem("SetCollectorToken", tokenObject.token)
+            })
+        }
+
+        function parseJwt (token) {
+            var base64Url = token.split('.')[1];
+            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            console.log(JSON.parse(jsonPayload));
+            return JSON.parse(jsonPayload);
+}   
+
+        function logout() {
+            localStorage.setItem("SetCollectorToken", "");
+            console.log(localStorage.getItem())
+        }
+
     </script>
 </head>
 <body>
@@ -146,6 +231,35 @@
         <h5>Bericht:</h5>
         <input type="textbox" width="300" id="emailBericht"><br><br>
         <button class="btn btn-primary" onclick="verstuurMail()">Verstuur mail</button>
+    </div>
+    <hr>
+    <div id="createNewUserArea">
+        <h5>New username:</h5>
+        <input type="text" id="newUsername"><br>
+        <h5>New password:</h5>
+        <input type="password" id="newPassword"><br>
+        <h5>Repeat password:</h5>
+        <input type="password" id="newPasswordRepeat"><br>
+        <br>
+        <button class="btn btn-success" onclick="createNewUser()">Create new account</button>
+    </div>
+    <hr>
+    <div id="CheckUserCredentials">
+        <h3>Check credentials</h3>
+        <h5>Username:</h5>
+        <input type="text" id="usernameInput"><br>
+        <h5>Password:</h5>
+        <input type="password" id="passwordInput"><br><br>
+        <button class="btn btn-success" onclick="checkCredentials()">Check credentials</button>
+    </div>
+    <hr>
+    <div id="checkToken">
+        <h3>Read token:</h3>
+        <button class="btn btn-danger" onclick="parseJwt(localStorage.getItem('SetCollectorToken'))">Decode JWT</button>
+    </div>
+    <div id="logout">
+        <h3>Log out</h3>
+        <button class="btn btn-warning" onclick="logout()"">Log out</button>
     </div>
 
 </body>

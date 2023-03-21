@@ -10,18 +10,17 @@ import org.springframework.web.bind.annotation.*;
 public class GameCollectionEndpoint {
 
     @Autowired
-    GameCollectionService cs;
+    GameCollectionService gameCollectionService;
 
     @PostMapping("gameCollection/saveGameToCollection/{collectionid}")
     public void saveGameToCollection(@PathVariable("collectionid") int collectionid, @RequestBody Game game){
-        GameCollection gameCollection = cs.findById(collectionid);
-        cs.saveGameToCollection(game, gameCollection);
+        GameCollection gameCollection = gameCollectionService.findById(collectionid);
+        gameCollectionService.saveGameToCollection(game, gameCollection);
     }
 
 
     @GetMapping("gameCollection/getCollection/{collectionid}")
     public GameCollection getCollection(@PathVariable("collectionid") int collectionid){
-        return cs.findById(collectionid);
+        return gameCollectionService.findById(collectionid);
     }
-
 }

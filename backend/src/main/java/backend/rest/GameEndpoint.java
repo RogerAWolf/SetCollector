@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.*;
 public class GameEndpoint {
 
     @Autowired
-    GameService gs;
+    GameService gameService;
 
     @CrossOrigin
     @GetMapping("/game/showGameById/{gameid}")
     public Game returnGame(@PathVariable("gameid") int gameid){
-        return gs.findById(gameid);
+        return gameService.findById(gameid);
     }
 
 

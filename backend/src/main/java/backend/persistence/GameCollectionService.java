@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 public class GameCollectionService {
 
     @Autowired
-    GameCollectionRepository gcr;
+    GameCollectionRepository gameCollectionRepository;
 
     @Autowired
     GameRepository gr;
@@ -19,7 +19,11 @@ public class GameCollectionService {
     GameScoreRepository gsr;
 
     public GameCollection findById(long collectionid){
-        return gcr.findById(collectionid).get();
+        return gameCollectionRepository.findById(collectionid).get();
+    }
+
+    public void saveGameCollection(GameCollection gameCollection){
+        gameCollectionRepository.save(gameCollection);
     }
 
 
@@ -29,7 +33,7 @@ public class GameCollectionService {
         }
         gr.save(game);
         gameCollection.getGameList().add(game);
-        gcr.save(gameCollection);
+        gameCollectionRepository.save(gameCollection);
     }
 
 }
